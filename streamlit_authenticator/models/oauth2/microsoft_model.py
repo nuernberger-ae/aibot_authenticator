@@ -136,17 +136,49 @@ class MicrosoftModel:
             if 'access_token' not in token_json:
                 print('No access token received')
                 st.rerun()
-            token_json = self.decode_jwt(token_json['access_token'])
+            decoded_token = self.decode_jwt(token_json['access_token'])
             keys = {'email', 'family_name', 'given_name'}
-            return {key: token_json[key] for key in keys if key in token_json}
-            # user_info_url = "https://graph.microsoft.com/v1.0/me"
-            # user_info_headers = {
-            #     "Authorization": f"Bearer {token_json['access_token']}"
-            # }
-            # user_info_r = requests.get(user_info_url, headers=user_info_headers, timeout=10)
-            # if user_info_r.status_code != 200:
-            #     raise LoginError('Failed to retrieve user information')
-            # return user_info_r.json()
+            user_info_combined = {key: decoded_token[key] for key in keys if key in decoded_token}
+            
+            # Fetch user information from Microsoft Graph API
+            user_info_url = "https://graph.microsoft.com/v1.0/me"
+            user_info_headers = {
+                "Authorization": f"Bearer {token_json['access_token']}"
+            }
+            user_info_r = requests.get(user_info_url, headers=user_info_headers, timeout=10)
+            user_info = user_info_r.json()
+            
+            # Fetch user's AD groups
+            user_groups_url = "https://graph.microsoft.com/v1.0/me/memberOf"
+            user_groups_r = requests.get(user_groups_url, headers=user_info_headers, timeout=10)
+            user_groups = user_groups_r.json()
+            
+            # Extract group memberships
+            groups = [
+                {'name': group['displayName'], 'id': group['id']}
+                for group in user_groups.get('value', [])
+                if '@odata.type' in group and group['@odata.type'] == '#microsoft.graph.group'
+            ]
+            
+            # Fetch user's assigned applications
+            user_apps_url = "https://graph.microsoft.com/v1.0/me/appRoleAssignments"
+            user_apps_r = requests.get(user_apps_url, headers=user_info_headers, timeout=10)
+            user_apps = user_apps_r.json()
+            
+            # Extract application assignments
+            applications = [
+                {'name': app['resourceDisplayName'], 'id': app['resourceId']}
+                for app in user_apps.get('value', [])
+            ]
+            
+            # Combine user information
+            user_info_combined['groups'] = groups
+            user_info_combined['applications'] = applications
+            user_info_combined['email'] = user_info.get('mail', None)
+            user_info_combined['aadobjectid'] = user_info.get('id', None)
+
+
+            return user_info_combined
     def guest_login(self) -> Union[str, dict]:
         """
         Handles the login process and fetches user information or returns the authorization
