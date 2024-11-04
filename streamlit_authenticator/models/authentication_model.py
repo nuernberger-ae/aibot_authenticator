@@ -1,3 +1,4 @@
+
 """
 Script description: This module executes the logic for the login, logout, register user,
 reset password, forgot password, forgot username, and modify user details widgets. 
@@ -54,7 +55,8 @@ class AuthenticationModel:
             self.credentials['usernames'] = {
                 key.lower(): value
                 for key, value in self.credentials['usernames'].items()
-                }
+                if key is not None
+            }
             if auto_hash:
                 if len(self.credentials['usernames']) > params.AUTO_HASH_MAX_USERS:
                     print(f"""Auto hashing in progress. To avoid runtime delays, please manually
@@ -289,11 +291,14 @@ class AuthenticationModel:
                 max_concurrent_users - 1:
                 st.query_params.clear()
                 raise LoginError('Maximum number of concurrent users exceeded')
+            if 'email' not in result:
+                raise LoginError('Email not found in authentication result')
             if result['email'] not in self.credentials['usernames']:
                 self.credentials['usernames'][result['email']] = {}
             if not self._is_guest_user(result['email']):
                 st.query_params.clear()
                 raise LoginError('User already exists')
+            
             self.credentials['usernames'][result['email']] = \
                 {'email': result['email'],
                  'logged_in': True, 'first_name': result.get('given_name', ''),
@@ -305,6 +310,20 @@ class AuthenticationModel:
             st.session_state['authentication_status'] = True
             st.session_state['name'] = f'{result.get("given_name", "")} ' \
                 f'{result.get("family_name", "")}'
+          
+            if provider.lower() == 'microsoft':
+                if 'aadobjectid' in result:
+                    st.session_state['aadobjectid'] = result.get('aadobjectid')
+                    self.credentials['usernames'][result['email']]['aadobjectid'] = result.get('aadobjectid')
+                if 'groups' in result:
+                    groups = result.get('groups')
+                    st.session_state['groups'] = groups
+                    self.credentials['usernames'][result['email']]['groups'] = groups
+                if 'applications' in result:
+                    applications = result.get('applications')
+                    st.session_state['applications'] = applications
+                    self.credentials['usernames'][result['email']]['applications'] = applications
+                  
             st.session_state['email'] = result['email']
             st.session_state['username'] = result['email']
             st.session_state['roles'] = roles
