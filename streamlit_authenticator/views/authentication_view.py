@@ -193,7 +193,7 @@ class Authenticate:
         location: str
             Location of the guest login button i.e. main or sidebar.
         provider: str
-            OAuth2 provider selection i.e. google or microsoft.
+            OAuth2 provider selection i.e. google or microsoft or auth0.
         oauth2: dict, optional
             Configuration parameters to implement an OAuth2 authentication.
         max_concurrent_users: int, optional
@@ -209,8 +209,8 @@ class Authenticate:
         """
         if location not in ['main', 'sidebar']:
             raise ValueError("Location must be one of 'main' or 'sidebar'")
-        if provider not in ['google', 'microsoft']:
-            raise ValueError("Provider must be one of 'google' or 'microsoft'")
+        if provider not in ['google', 'microsoft', 'auth0']:
+            raise ValueError("Provider must be one of 'google' or 'microsoft' or 'auth0'")
         if not st.session_state['authentication_status']:
             token = self.cookie_controller.get_cookie()
             if token:
