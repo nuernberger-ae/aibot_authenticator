@@ -78,6 +78,7 @@ class MicrosoftModel:
             f"&redirect_uri={self.microsoft['redirect_uri']}"
             f"&response_type=code"
             f"&scope=openid%20profile%20email"
+            f"&prompt=select_account"  # This line ensures the account selection prompt
             # f"&code_challenge={code_challenge}"
             # f"&code_challenge_method=S256"
         )
@@ -172,12 +173,15 @@ class MicrosoftModel:
             ]
             
             # Combine user information
-            user_info_combined['groups'] = groups
-            user_info_combined['applications'] = applications
-            user_info_combined['email'] = user_info.get('mail', None)
-            user_info_combined['aadobjectid'] = user_info.get('id', None)
-
-
+            if groups:
+                user_info_combined['groups'] = groups
+            if applications:
+                user_info_combined['applications'] = applications
+            if email := user_info.get('mail') or user_info.get('userPrincipalName'):
+                user_info_combined['email'] = email.lower()
+            if aadobjectid := user_info.get('id'):
+                user_info_combined['aadobjectid'] = aadobjectid
+            
             return user_info_combined
     def guest_login(self) -> Union[str, dict]:
         """
